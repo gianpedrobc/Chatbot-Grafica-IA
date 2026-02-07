@@ -45,13 +45,14 @@ st.title("🤖 Chatbot da Gráfica")
 pergunta = st.text_input("Digite sua pergunta:")
 
 if pergunta:
-    categoria = classificar_pergunta(pergunta)
-    arquivo = escolher_arquivo_por_categoria(categoria)
+    try:
+        categoria = classificar_pergunta(pergunta)
+        arquivo = escolher_arquivo_por_categoria(categoria)
 
-    with open(arquivo, "r", encoding="utf-8") as f:
-        contexto = f.read()
+        with open(arquivo, "r", encoding="utf-8") as f:
+            contexto = f.read()
 
-    prompt_final = f"""
+        prompt_final = f"""
 Você é um atendente de uma gráfica.
 Use APENAS as informações abaixo para responder.
 Se não souber, diga que não possui essa informação.
@@ -63,14 +64,22 @@ PERGUNTA:
 {pergunta}
 """
 
-    try:
         resposta = model.generate_content(prompt_final)
         resposta_final = resposta.text
 
-    except Exception:
-        resposta_final = (
-            "Resposta baseada nas informações disponíveis:\n\n"
-            + contexto[:500]
-        )
+    except Exception as e:
+        erro = str(e).lower()
+
+        if "quota" in erro or "limit" in erro or "token" in erro or "429" in erro:
+            resposta_final = (
+                "⚠️ Serviço temporariamente indisponível.\n\n"
+                "O limite de uso da inteligência artificial foi atingido.\n"
+                "Por favor, tente novamente mais tarde."
+            )
+        else:
+            resposta_final = (
+                "❌ Ocorreu um erro ao processar sua pergunta.\n\n"
+                "Tente novamente ou reformule a pergunta."
+            )
 
     st.write(resposta_final)
