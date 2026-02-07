@@ -1,0 +1,76 @@
+import streamlit as st
+import google.generativeai as genai
+from dotenv import load_dotenv
+import os
+
+# Carrega .env
+load_dotenv()
+
+# Configura Gemini
+genai.configure(api_key=os.getenv("GOOGLE_API_KEY"))
+model = genai.GenerativeModel("gemini-3-flash-preview")
+
+
+
+# -------------------------
+# Classificação da pergunta
+# -------------------------
+def classificar_pergunta(pergunta):
+    prompt = f"""
+Classifique a pergunta em apenas UMA dessas categorias:
+camisa, caneca, banner, geral
+
+Pergunta: "{pergunta}"
+Responda somente com a categoria.
+"""
+    resposta = model.generate_content(prompt)
+    return resposta.text.strip().lower()
+
+# -------------------------
+# Escolha do arquivo
+# -------------------------
+def escolher_arquivo_por_categoria(categoria):
+    return {
+        "camisa": "dados/camisa.txt",
+        "caneca": "dados/caneca.txt",
+        "banner": "dados/banner.txt",
+        "geral": "dados/geral.txt"
+    }.get(categoria, "dados/geral.txt")
+
+# -------------------------
+# Interface Streamlit
+# -------------------------
+st.title("🤖 Chatbot da Gráfica")
+
+pergunta = st.text_input("Digite sua pergunta:")
+
+if pergunta:
+    categoria = classificar_pergunta(pergunta)
+    arquivo = escolher_arquivo_por_categoria(categoria)
+
+    with open(arquivo, "r", encoding="utf-8") as f:
+        contexto = f.read()
+
+    prompt_final = f"""
+Você é um atendente de uma gráfica.
+Use APENAS as informações abaixo para responder.
+Se não souber, diga que não possui essa informação.
+
+INFORMAÇÕES:
+{contexto}
+
+PERGUNTA:
+{pergunta}
+"""
+
+    try:
+        resposta = model.generate_content(prompt_final)
+        resposta_final = resposta.text
+
+    except Exception:
+        resposta_final = (
+            "Resposta baseada nas informações disponíveis:\n\n"
+            + contexto[:500]
+        )
+
+    st.write(resposta_final)
